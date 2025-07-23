@@ -1,22 +1,99 @@
-Approach Explanation: Persona-Driven Document Intelligence
-Our solution is architected as a modular, multi-stage Python pipeline designed for offline execution. The system intelligently extracts and ranks document content by semantically matching it against a user's profile and objective.
+# Approach Explanation: Persona-Driven Document Intelligence
 
-1. Hierarchical PDF Parsing & Chunking
-We use the PyMuPDF library for its robust and fast text extraction capabilities. Instead of treating a PDF as flat text, our pdf_parser.py module implements a sophisticated hierarchical chunking strategy.
+This document outlines the end-to-end design and implementation of our modular, offline-capable pipeline for extracting, semantically ranking, and summarizing PDF documents based on a user's persona and objective.
 
-It first identifies major section headers using a multi-factor heuristic that analyzes font weight (boldness), font size (relative to the page's median), and conciseness. This is far more reliable than using font size alone.
+---
 
-Crucially, all text content appearing between two consecutive headers is consolidated into a single, cohesive chunk. This ensures that the full context of a section is preserved for ranking, which proved vital for achieving relevant results. This structure of a title with its complete body of text directly maps to the hackathon's required output format.
+## 🔍 1. System Overview
 
-2. Model Selection & Semantic Ranking
-The core of our system's intelligence comes from the sentence-transformers/msmarco-distilbert-base-v2 model. This model was specifically chosen for its excellent performance in semantic search tasks, combined with a fast CPU inference speed and a manageable size, making it ideal for the hackathon's constraints.
+* **Goal:** Given a collection of PDFs and a `query.json` describing a user’s role and task, produce a prioritized list of document sections that best address the user’s needs.
+* **Key Components:**
 
-Our ranking algorithm in semantic_ranker.py is powered by cosine similarity:
+  1. **PDF Parsing & Chunking** (`pdf_parser.py`)
+  2. **Query Enhancement & Embedding** (`semantic_ranker.py`)
+  3. **Semantic Ranking** (`semantic_ranker.py`)
+  4. **Output Assembly** (`output_builder.py`)
 
-Enhanced Query Formulation: A simple combination of the Persona and Job-to-be-Done proved insufficient. Our final approach creates a descriptive, natural language query that is explicitly expanded with keywords relevant to the persona's goal (e.g., "nightlife," "coastal adventures," "food"). This query rewriting step is essential for guiding the model to the most relevant content.
+All modules are written in Python 3.9+ and orchestrated by `main.py`. Docker ensures consistent, offline-capable execution.
 
-Vector Encoding: This enhanced query and the consolidated content chunk for each section are encoded into semantic vector embeddings.
+---
 
-Ranking: We calculate the cosine similarity between the query vector and each section's content vector. Since each section now has one consolidated chunk of text, its relevance score is determined by the similarity of its entire content to the query. Sections are then ranked globally based on these scores.
+## 🌐 2. Hierarchical PDF Parsing & Chunking
 
-This refined approach allows us to precisely address the "Section Relevance" and "Sub-Section Relevance" scoring categories. The entire process is orchestrated by main.py, which handles I/O and uses output_builder.py to generate the final output in the specified JSON format.
+**Objective:** Convert raw PDF layouts into meaningful text chunks that preserve context and structure.
+
+1. **Font-Based Header Detection**
+
+   * Analyze every text span’s font size relative to the page’s median font.
+   * Measure font weight (boldness) and header-line conciseness (short, descriptive).
+   * Combine these signals in a heuristic to reliably identify section titles.
+
+2. **Chunk Consolidation**
+
+   * Treat each detected header as the start of a new chunk.
+   * Aggregate all intervening text (paragraphs, lists, figures) into that chunk.
+   * Result: A list of `(header, full_section_text)` pairs, giving the model complete context for each section.
+
+> *Why it matters*: Consolidated chunks prevent fragmented ranking and ensure topics aren’t split across multiple embeddings.
+
+---
+
+## 🤖 3. Query Enhancement & Embedding
+
+**Objective:** Transform a minimal user query into a rich, context-aware search prompt.
+
+1. **Descriptive Query Formulation**
+
+   * Base input: Persona role + Job-to-Be-Done (JTBD).
+   * Expand with **domain keywords** (e.g., *"beaches, nightlife, local cuisine"*) relevant to the JTBD.
+   * Generate a natural-language query that guides the embedding model toward the user’s precise interest.
+
+2. **Embedding Generation**
+
+   * Model: `sentence-transformers/msmarco-distilbert-base-v2`.
+   * Compute a single vector for the enhanced query.
+   * Compute one vector per consolidated PDF chunk.
+
+> *Model choice rationale*: Balances semantic performance with CPU-friendly speed and a compact footprint (< 400 MB).
+
+---
+
+## 📊 4. Semantic Ranking Algorithm
+
+**Objective:** Score and sort each section chunk by relevance to the enhanced query.
+
+1. **Cosine Similarity Calculation**
+
+   * Measure similarity between the query vector and each chunk vector.
+
+2. **Global Ranking**
+
+   * Assign each chunk a relevance score.
+   * Sort all chunks in descending order of score.
+
+3. **Relevance Categories**
+
+   * **Section Relevance**: Overall importance of the chunk’s topic.
+   * **Sub-Section Relevance**: Finer-grained score when deeper headers exist (handled implicitly through chunk granularity).
+
+> *Outcome*: A fully ordered list of sections, highest-scoring first, ready for extraction to JSON.
+
+---
+
+## 🛠 5. Output Generation
+
+* `output_builder.py` reads the ranked list and formats it into `output.json`:
+
+  ```json
+  [
+    {"header": "Top Section", "content": "Full text...", "score": 0.92},
+    ...
+  ]
+  ```
+* The JSON schema supports downstream integration (dashboards, APIs, or further processing).
+
+---
+
+## 🎯 6. Summary
+
+Our modular pipeline—leveraging robust PDF parsing heuristics and state-of-the-art embeddings—delivers persona-driven insights from large document sets. By preserving full-section context and refining queries with domain keywords, we ensure the semantically most relevant content rises to the top, empowering faster, data-informed decisions.

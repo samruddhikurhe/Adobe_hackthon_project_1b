@@ -1,153 +1,155 @@
-Persona-Driven Document Intelligence
-A semantic analysis pipeline that extracts and ranks the most relevant information from a collection of PDF documents based on a user's persona and objective.
+**Persona-Driven Document Intelligence**
+A semantic analysis pipeline that extracts and ranks the most relevant information from a collection of PDF documents based on a user’s persona and objective.
 
-This project was developed for the Adobe Hackathon (Round 1B). It intelligently processes multiple documents to provide a user with a prioritized and context-aware summary, enabling faster and more effective decision-making.
+---
 
-Table of Contents
-How It Works
+## 🚀 Table of Contents
 
-Tech Stack
+1. [Overview](#overview)
+2. [Features](#features)
+3. [Tech Stack](#tech-stack)
+4. [Prerequisites](#prerequisites)
+5. [Installation](#installation)
+6. [Usage](#usage)
 
-Getting Started
+   * [Query Setup](#query-setup)
+   * [Local Run](#local-run)
+   * [Docker Run](#docker-run)
+7. [Project Structure](#project-structure)
+8. [Configuration & Tuning](#configuration--tuning)
+9. [Contributing](#contributing)
+10. [License](#license)
+11. [Contact](#contact)
 
-Prerequisites
+---
 
-Installation
+## 📖 Overview
 
-Running the Application
+Persona-Driven Document Intelligence was developed for the Adobe Hackathon (Round 1B). It processes multiple PDF documents, tailors the analysis to a user’s persona and objective, and generates a prioritized, context-aware summary for faster decision-making.
 
-Step 1: Prepare Your Input
+---
 
-Step 2: Build the Docker Image
+## ✨ Features
 
-Step 3: Run the Docker Container
+* **Hierarchical PDF Parsing**: Detects headers by font size/weight and groups content into logical sections.
+* **Query Enhancement**: Combines persona, objective, and task-specific keywords for richer search queries.
+* **Semantic Ranking**: Uses `msmarco-distilbert-base-v2` to compute embeddings and rank sections by cosine similarity.
+* **Structured Output**: Generates a clear `output.json` with the highest-relevance sections first.
+* **Containerized**: One-time setup; runs consistently across environments via Docker.
 
-Project Structure
+---
 
-Configuration & Tuning
+## 🛠 Tech Stack
 
-How It Works
-The system operates as a sophisticated pipeline that emulates human-like document analysis.
+* **Language**: Python 3.9+
+* **PDF Parsing**: PyMuPDF (`fitz`)
+* **Embeddings**: `sentence-transformers`
+* **Numerics**: NumPy
+* **Containerization**: Docker
 
-Data Flow:
+---
 
-Input: The process starts with a collection of PDF documents and a query.json file that defines the user's persona and job_to_be_done.
+## 📋 Prerequisites
 
-Hierarchical Parsing (pdf_parser.py): Each PDF is analyzed to identify section headers based on font size and weight. All text between two headers is consolidated into a single, cohesive chunk of content. This preserves the full context of each section.
+* Python 3.9 or higher
+* Docker Engine (for containerized execution)
 
-Query Enhancement (semantic_ranker.py): A simple query is not enough. The system creates a rich, descriptive search query by combining the user's persona, their objective, and a set of keywords relevant to the task (e.g., "nightlife," "food," "beaches").
+> *Note*: Git is assumed to be available on your system.
 
-Semantic Ranking (semantic_ranker.py):
+---
 
-The powerful msmarco-distilbert-base-v2 sentence-transformer model converts the enhanced query and each document section into numerical vector embeddings.
+## ⚙️ Installation
 
-The system calculates the cosine similarity between the query vector and each section vector to determine relevance.
+### 1. Clone the Repository
 
-Output Generation (output_builder.py): The ranked sections and their corresponding content are formatted into a structured output.json file, presenting the most important information first.
+```bash
+git clone https://github.com/<your-username>/persona-doc-intel.git
+cd persona-doc-intel
+```
 
-The entire application is containerized with Docker, ensuring it runs consistently in any environment after a one-time setup.
+### 2. Create a Virtual Environment (Optional)
 
-Tech Stack
-Language: Python 3.9
+```bash
+python3 -m venv venv
+source venv/bin/activate    # on Linux/macOS
+venv\\Scripts\\activate   # on Windows
+```
 
-Core Libraries:
+### 3. Install Dependencies
 
-sentence-transformers: For state-of-the-art semantic embedding models.
+```bash
+pip install -r requirements.txt
+```
 
-PyMuPDF (fitz): For high-performance and accurate PDF text extraction.
+---
 
-numpy: For numerical operations.
+## 🚀 Usage
 
-Containerization: Docker
+### Query Setup
 
-Semantic Model: sentence-transformers/msmarco-distilbert-base-v2 (chosen for its excellent balance of performance and speed on a CPU).
+Edit `input/query.json` to define your persona and objective. Example:
 
-Getting Started
-Follow these instructions to get the project running on your local machine.
-
-Prerequisites
-You must have the following software installed:
-
-Git
-
-Docker Desktop
-
-Installation
-Clone the repository:
-Open your terminal or command prompt and run the following command:
-
-git clone <your-repository-url>
-cd <repository-folder-name>
-
-Understand the Directory:
-The project is pre-organized. You will primarily interact with the input/ and output/ directories.
-
-Running the Application
-Step 1: Prepare Your Input
-Add your PDFs: Place all the PDF documents you want to analyze into the input/ directory.
-
-Define your Query: Open the input/query.json file and modify the persona and job_to_be_done fields to match your objective.
-
-Example query.json:
-
+```json
 {
-  "persona": {
-    "role": "Travel Planner"
-  },
-  "job_to_be_done": {
-    "description": "Plan a trip of 4 days for a group of 10 college friends."
-  }
+  "persona": {"role": "Travel Planner"},
+  "job_to_be_done": {"description": "Plan a 4-day trip for 10 college friends."}
 }
+```
 
-Step 2: Build the Docker Image
-In your terminal, at the root of the project directory, run the following command. This will build a Docker image named document-intelligence.
+### Local Run
 
-docker build -t document-intelligence .
+Ensure PDFs are in `input/` alongside `query.json`, then:
 
-This command reads the Dockerfile, installs all the Python dependencies, and packages the application.
+```bash
+python src/main.py --input input/ --output output/
+```
 
-Step 3: Run the Docker Container
-Execute the following command to run the application.
+### Docker Run
 
-docker run --rm -v "$(pwd)/input:/app/input" -v "$(pwd)/output:/app/output" document-intelligence
+1. **Build the image**
 
-What this command does:
+   ```bash
+   docker build -t document-intelligence .
+   ```
+2. **Run the container**
 
-docker run: The command to start a new container.
+   ```bash
+   docker run --rm \
+     -v "$(pwd)/input:/app/input" \
+     -v "$(pwd)/output:/app/output" \
+     document-intelligence
+   ```
 
---rm: Automatically removes the container when it finishes running, keeping your system clean.
+---
 
--v "$(pwd)/input:/app/input": Mounts your local input folder into the container. This is how the container reads your PDFs and query.json.
+## 📂 Project Structure
 
--v "$(pwd)/output:/app/output": Mounts your local output folder into the container. This is where the container will save the final output.json.
-
-document-intelligence: The name of the image you built in the previous step.
-
-Important Note: The very first time you run this command, the container will require an internet connection to download and cache the sentence-transformer model. All subsequent runs will be fully offline as they will use the cached model.
-
-Once the command finishes, you will find the output.json file in your local output/ directory.
-
-Project Structure
+```
 .
 ├── Dockerfile
 ├── README.md
 ├── requirements.txt
-├── input/
-│   ├── query.json
-│   └── (place your PDFs here)
-├── output/
-│   └── (output.json will be generated here)
+├── input/               # PDFs + query.json
+├── output/              # Generated output.json
 └── src/
-    ├── __init__.py
-    ├── config.py
-    ├── main.py
-    ├── output_builder.py
-    ├── pdf_parser.py
-    └── semantic_ranker.py
+    ├── config.py        # Parsing thresholds
+    ├── main.py          # Entry point
+    ├── pdf_parser.py    # Header-based PDF parsing
+    ├── semantic_ranker.py # Query enhancement & ranking
+    └── output_builder.py  # JSON output formatting
+```
 
-Configuration & Tuning
-For advanced users, the PDF parsing logic can be fine-tuned for different document structures by adjusting the HEADER_FONT_SIZE_THRESHOLD variable in src/config.py.
+---
 
-Lowering this value (e.g., to 1.05) makes header detection more sensitive.
+## 🎛 Configuration & Tuning
 
-Increasing this value (e.g., to 1.2) makes it less sensitive.
+Adjust header detection sensitivity in `src/config.py`:
+
+```python
+# Default threshold
+HEADER_FONT_SIZE_THRESHOLD = 1.1
+# More sensitive: lower value (e.g., 1.05)
+# Less sensitive: higher value (e.g., 1.2)
+```
+
+---
