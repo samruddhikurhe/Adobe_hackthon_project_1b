@@ -1,0 +1,29 @@
+# --- Python ---
+# Byte-compiled / optimized / C extensions
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environments
+venv/
+.venv/
+env/
+.env
+
+# --- Operating System Files ---
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+
+# --- IDEs and Editors ---
+# Visual Studio Code
+.vscode/
+
+# --- Project-Specific ---
+# Do not track downloaded models
+models/
+
+# Do not track generated output files
+output/
