@@ -1,99 +1,111 @@
-# Approach Explanation: Persona-Driven Document Intelligence
+# 📄 Persona-Driven Document Intelligence
 
-This document outlines the end-to-end design and implementation of our modular, offline-capable pipeline for extracting, semantically ranking, and summarizing PDF documents based on a user's persona and objective.
-
----
-
-## 🔍 1. System Overview
-
-* **Goal:** Given a collection of PDFs and a `query.json` describing a user’s role and task, produce a prioritized list of document sections that best address the user’s needs.
-* **Key Components:**
-
-  1. **PDF Parsing & Chunking** (`pdf_parser.py`)
-  2. **Query Enhancement & Embedding** (`semantic_ranker.py`)
-  3. **Semantic Ranking** (`semantic_ranker.py`)
-  4. **Output Assembly** (`output_builder.py`)
-
-All modules are written in Python 3.9+ and orchestrated by `main.py`. Docker ensures consistent, offline-capable execution.
+This document outlines the architecture, evolution, and technical decisions behind our intelligent document analysis pipeline. The system is designed to be a robust, **offline-capable solution** that processes large collections of PDF documents, extracting and ranking the most relevant information based on a user's specific *persona* and *objective*.
 
 ---
 
-## 🌐 2. Hierarchical PDF Parsing & Chunking
+## 🚀 The Journey: From a Simple Model to a Sophisticated Pipeline
 
-**Objective:** Convert raw PDF layouts into meaningful text chunks that preserve context and structure.
-
-1. **Font-Based Header Detection**
-
-   * Analyze every text span’s font size relative to the page’s median font.
-   * Measure font weight (boldness) and header-line conciseness (short, descriptive).
-   * Combine these signals in a heuristic to reliably identify section titles.
-
-2. **Chunk Consolidation**
-
-   * Treat each detected header as the start of a new chunk.
-   * Aggregate all intervening text (paragraphs, lists, figures) into that chunk.
-   * Result: A list of `(header, full_section_text)` pairs, giving the model complete context for each section.
-
-> *Why it matters*: Consolidated chunks prevent fragmented ranking and ensure topics aren’t split across multiple embeddings.
+Our development process was an **iterative journey** focused on solving increasingly complex semantic challenges.
 
 ---
 
-## 🤖 3. Query Enhancement & Embedding
+### 🧪 Initial Approach: The Fast Bi-Encoder
 
-**Objective:** Transform a minimal user query into a rich, context-aware search prompt.
+Our first implementation used a standard **bi-encoder model** (`msmarco-distilbert-base-v2`). This architecture is incredibly fast and efficient.
 
-1. **Descriptive Query Formulation**
+#### ✅ How It Worked:
+- Encoded the user’s query into a vector.
+- Encoded all text chunks from documents into vectors.
+- Used **cosine similarity** to find the chunks closest to the query.
 
-   * Base input: Persona role + Job-to-Be-Done (JTBD).
-   * Expand with **domain keywords** (e.g., *"beaches, nightlife, local cuisine"*) relevant to the JTBD.
-   * Generate a natural-language query that guides the embedding model toward the user’s precise interest.
+#### ✅ Initial Success:
+Worked well for **simple, keyword-based queries** (e.g., finding "nightlife" for a "trip planner").
 
-2. **Embedding Generation**
+#### ❌ The Challenge: Limits of Keyword-Based Relevance
+In a nuanced scenario, such as an *HR professional* needing "fillable forms for onboarding and compliance", the model failed.
 
-   * Model: `sentence-transformers/msmarco-distilbert-base-v2`.
-   * Compute a single vector for the enhanced query.
-   * Compute one vector per consolidated PDF chunk.
+- It returned sections about **PDF/A Compliance** and **License Deployment**.
+- These matched keywords like "compliance" but **missed the intent**.
 
-> *Model choice rationale*: Balances semantic performance with CPU-friendly speed and a compact footprint (< 400 MB).
-
----
-
-## 📊 4. Semantic Ranking Algorithm
-
-**Objective:** Score and sort each section chunk by relevance to the enhanced query.
-
-1. **Cosine Similarity Calculation**
-
-   * Measure similarity between the query vector and each chunk vector.
-
-2. **Global Ranking**
-
-   * Assign each chunk a relevance score.
-   * Sort all chunks in descending order of score.
-
-3. **Relevance Categories**
-
-   * **Section Relevance**: Overall importance of the chunk’s topic.
-   * **Sub-Section Relevance**: Finer-grained score when deeper headers exist (handled implicitly through chunk granularity).
-
-> *Outcome*: A fully ordered list of sections, highest-scoring first, ready for extraction to JSON.
+#### 🧩 Root Cause:
+Bi-encoders are good at surface-level matching but **struggle with deeper contextual understanding**, especially when the same word has different meanings in different contexts.
 
 ---
 
-## 🛠 5. Output Generation
+## 🧠 Final Architecture: Two-Stage Retrieval & Re-ranking
 
-* `output_builder.py` reads the ranked list and formats it into `output.json`:
+To address the limitations, we adopted a **state-of-the-art two-stage architecture** that balances **speed** and **semantic precision**.
 
-  ```json
-  [
-    {"header": "Top Section", "content": "Full text...", "score": 0.92},
-    ...
-  ]
-  ```
-* The JSON schema supports downstream integration (dashboards, APIs, or further processing).
+### 🥇 Stage 1: Retrieval (Broad Search)
+
+**Model:** `msmarco-distilbert-base-v2` (Bi-Encoder)
+
+**Process:**
+1. Generate a descriptive query (e.g., “How to use Acrobat to create, fill, and sign forms…”).
+2. Embed query and chunks using bi-encoder.
+3. Retrieve top **75 most relevant** candidates via cosine similarity.
+
+**Goal:** Fast, approximate narrowing of candidates from thousands to 75.
 
 ---
 
-## 🎯 6. Summary
+### 🥈 Stage 2: Re-ranking (Expert Review)
 
-Our modular pipeline—leveraging robust PDF parsing heuristics and state-of-the-art embeddings—delivers persona-driven insights from large document sets. By preserving full-section context and refining queries with domain keywords, we ensure the semantically most relevant content rises to the top, empowering faster, data-informed decisions.
+**Model:** `cross-encoder/ms-marco-MiniLM-L-6-v2` (Cross-Encoder)
+
+**Process:**
+1. For each of the 75 candidates, feed the chunk and query together to the cross-encoder.
+2. Get a more **accurate relevance score** using deep semantic understanding.
+3. Final sorting is done based on this refined score.
+
+**Goal:** Apply deep reasoning to select the most relevant chunks based on intent.
+
+---
+
+### ✅ Summary: Why Two Stages?
+
+| Bi-Encoder              | Cross-Encoder             |
+|------------------------|---------------------------|
+| Fast & scalable         | Accurate but slow         |
+| Good for broad filtering| Good for fine-grained ranking |
+
+The two-stage system **combines speed with precision**, mirroring how modern search engines operate.
+
+---
+
+## 🛠️ Supporting Components
+
+### 📘 Hierarchical PDF Parsing (`pdf_parser.py`)
+- Detects headings using **font size and weight heuristics**.
+- Consolidates all text under each heading into **logical chunks**.
+- Preserves context for relevance scoring.
+
+### 🧠 Dynamic Query Formulation (`semantic_ranker.py`)
+- Automatically generates **descriptive queries** based on:
+  - The persona (e.g., HR, Lawyer)
+  - The job-to-be-done (e.g., “fill forms”, “extract compliance data”)
+
+### 📦 Containerization (`Dockerfile`)
+- Fully containerized and **offline-capable**.
+- Guarantees reproducibility and platform independence after initial setup.
+
+---
+
+## 🔮 Future Work & Potential Improvements
+
+### 🧩 1. Centralized Configuration
+Move model names and thresholds into `config.py` for easier experimentation and tuning.
+
+### 🛡️ 2. Advanced Error Handling
+Add detailed `try...except` blocks for:
+- Corrupted PDFs
+- Encrypted/password-protected files
+
+### 🤖 3. Extractive Question Answering (Stage 3)
+Add a third stage using a QA model like `deepset/roberta-base-squad2`:
+- Extract **short, direct answers** from top-ranked chunks.
+- Example: Instead of giving a paragraph, return the exact form field name.
+
+---
+

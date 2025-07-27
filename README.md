@@ -1,51 +1,64 @@
-**Persona-Driven Document Intelligence**
-A semantic analysis pipeline that extracts and ranks the most relevant information from a collection of PDF documents based on a user’s persona and objective.
+## Persona‑Driven Document Intelligence
 
----
+A semantic analysis pipeline that extracts and ranks the most relevant information from a collection of PDF documents based on a user’s persona and objective. Combines a fast bi‑encoder retrieval stage with a precise cross‑encoder re‑ranking stage, all running fully offline in Docker.
 
 ## 🚀 Table of Contents
 
-1. [Overview](#overview)
-2. [Features](#features)
-3. [Tech Stack](#tech-stack)
-4. [Prerequisites](#prerequisites)
-5. [Installation](#installation)
-6. [Usage](#usage)
+Overview
 
-   * [Query Setup](#query-setup)
-   * [Local Run](#local-run)
-   * [Docker Run](#docker-run)
-7. [Project Structure](#project-structure)
-8. [Configuration & Tuning](#configuration--tuning)
-9. [Contributing](#contributing)
-10. [License](#license)
-11. [Contact](#contact)
+Features
 
----
+Tech Stack
+
+Prerequisites
+
+Installation
+
+Usage
+
+Query Setup
+
+Local Run
+
+Docker Run
+
+Project Structure
+
+Configuration & Tuning
 
 ## 📖 Overview
 
-Persona-Driven Document Intelligence was developed for the Adobe Hackathon (Round 1B). It processes multiple PDF documents, tailors the analysis to a user’s persona and objective, and generates a prioritized, context-aware summary for faster decision-making.
-
----
+Persona‑Driven Document Intelligence processes multiple PDFs, tailors semantic analysis to a user’s persona and objective, and produces a context‑aware, prioritized summary to speed decision‑making.
 
 ## ✨ Features
 
-* **Hierarchical PDF Parsing**: Detects headers by font size/weight and groups content into logical sections.
-* **Query Enhancement**: Combines persona, objective, and task-specific keywords for richer search queries.
-* **Semantic Ranking**: Uses `msmarco-distilbert-base-v2` to compute embeddings and rank sections by cosine similarity.
-* **Structured Output**: Generates a clear `output.json` with the highest-relevance sections first.
-* **Containerized**: One-time setup; runs consistently across environments via Docker.
+Hierarchical PDF ParsingDetects headings via font‑size heuristics and groups content into logical chunks.
 
----
+Persona‑Driven Query EnhancementMerges persona + objective + task keywords into rich natural‑language queries.
+
+Two‑Stage Semantic Retrieval
+
+Bi‑Encoder Retrieval (msmarco-distilbert-base-v2): Fast embedding lookup; retrieves top 75 candidates.
+
+Cross‑Encoder Re‑ranking (cross-encoder/ms-marco-MiniLM-L-6-v2): Deep semantic scoring to refine ranking.
+
+Structured OutputProduces output.json listing highest‑relevance sections first.
+
+Containerized & OfflineFully reproducible via Docker; no internet required at runtime.
 
 ## 🛠 Tech Stack
 
-* **Language**: Python 3.9+
-* **PDF Parsing**: PyMuPDF (`fitz`)
-* **Embeddings**: `sentence-transformers`
-* **Numerics**: NumPy
-* **Containerization**: Docker
+Python 3.9+
+
+PDF Parsing: PyMuPDF (fitz)
+
+Embeddings: sentence-transformers
+
+Similarity & Re‑ranking: sentence-transformers cross‑encoder
+
+Numerics: NumPy
+
+Containerization: Docker
 
 ---
 
@@ -145,11 +158,14 @@ python src/main.py --input input/ --output output/
 
 Adjust header detection sensitivity in `src/config.py`:
 
-```python
-# Default threshold
+# Number of bi-encoder candidates to retrieve
+TOP_K = 75
+
+# Header detection sensitivity
 HEADER_FONT_SIZE_THRESHOLD = 1.1
-# More sensitive: lower value (e.g., 1.05)
-# Less sensitive: higher value (e.g., 1.2)
-```
+
+# Model identifiers
+BIO_ENCODER = "msmarco-distilbert-base-v2"
+CROSS_ENCODER = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 ---
