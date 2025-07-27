@@ -22,7 +22,7 @@ Our first implementation used a standard **bi-encoder model** (`msmarco-distilbe
 #### ✅ Initial Success:
 Worked well for **simple, keyword-based queries** (e.g., finding "nightlife" for a "trip planner").
 
-#### ❌ The Challenge: Limits of Keyword-Based Relevance
+#### The Challenge: Limits of Keyword-Based Relevance
 In a nuanced scenario, such as an *HR professional* needing "fillable forms for onboarding and compliance", the model failed.
 
 - It returned sections about **PDF/A Compliance** and **License Deployment**.

@@ -158,13 +158,13 @@ python src/main.py --input input/ --output output/
 
 Adjust header detection sensitivity in `src/config.py`:
 
-# Number of bi-encoder candidates to retrieve
+Number of bi-encoder candidates to retrieve
 TOP_K = 75
 
-# Header detection sensitivity
+Header detection sensitivity
 HEADER_FONT_SIZE_THRESHOLD = 1.1
 
-# Model identifiers
+Model identifiers
 BIO_ENCODER = "msmarco-distilbert-base-v2"
 CROSS_ENCODER = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
